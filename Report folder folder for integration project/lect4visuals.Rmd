@@ -1,0 +1,302 @@
+---
+title: "Visuals"
+author: "Kelly Adu-Gyamfi"
+date: "2025-09-23"
+output: word_document
+---
+
+
+```{r}
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+```
+```{r}
+install.packages("GGally")      # 
+install.packages("corrplot")
+```
+
+```{r}
+library(corrplot)
+```
+
+
+
+```{r}
+library(readr)
+INTEGRATED_DATA <- read_csv("INTEGRATED_DATA.csv")
+View(INTEGRATED_DATA)
+```
+
+
+```{r}
+# Create a visualization of educational attainment
+education_data <- INTEGRATED_DATA %>%
+  select(PCT_LESS_THAN_HS_15_19, PCT_HS_ONLY_15_19, 
+         PCT_SOME_COLLEGE_15_19, PCT_BAC_0R_HIGH_15_19) %>%
+  gather(key = "Education_Level", value = "Percentage")
+
+ggplot(education_data, aes(x = Percentage, fill = Education_Level)) +
+  geom_histogram(alpha = 0.6, position = "identity", bins = 20) +
+  labs(title = "Distribution of Educational Attainment Across US Counties",
+       x = "Percentage of Population", y = "Number of Counties") +
+  theme_minimal()
+
+```
+
+```{r}
+# Create a visualization of educational attainment
+education_data <- INTEGRATED_DATA %>%
+  select(PCT_LESS_THAN_HS_15_19, PCT_HS_ONLY_15_19, 
+         PCT_SOME_COLLEGE_15_19, PCT_BAC_0R_HIGH_15_19) %>%
+  gather(key = "Education_Level", value = "Percentage")
+
+ggplot(education_data, aes(x = Percentage, fill = Education_Level)) +
+  geom_histogram(alpha = 0.6, position = "identity", bins = 20) +
+  labs(title = "Distribution of Educational Attainment Across US Counties",
+       x = "Percentage of Population", y = "Number of Counties") +
+  theme_minimal()
+```
+
+```{r}
+ggplot(education_data, aes(x = Percentage, fill = Education_Level)) +
+  geom_density(alpha = 0.5) +
+  labs(title = "Density of Educational Attainment Across US Counties",
+       x = "Percentage of Population", y = "Density") +
+  theme_minimal()
+```
+
+```{r}
+# install.packages("ggridges") # if not installed
+library(ggridges)
+
+ggplot(education_data, aes(x = Percentage, y = Education_Level, fill = Education_Level)) +
+  geom_density_ridges(alpha = 0.7) +
+  labs(title = "Ridgeline Plot of Educational Attainment Across US Counties",
+       x = "Percentage of Population", y = "") +
+  theme_minimal() +
+  theme(legend.position = "none")
+```
+
+
+```{r}
+ggplot(INTEGRATED_DATA, aes(x = PCT_BAC_0R_HIGH_15_19, y = PCTPOVALL_2019, color = WINNING_PARTY)) +
+  geom_point(alpha = 0.7) +
+  geom_smooth(method = "lm", se = FALSE) +
+  labs(title = "Relationship Between Bachelor's Degree Attainment and Poverty Rates",
+       x = "Percentage with Bachelor's Degree or Higher",
+       y = "Poverty Rate (%)") +
+  theme_minimal()
+
+
+```
+
+```{r}
+ggplot(INTEGRATED_DATA, aes(x = WINNING_PARTY, y = UNWMPLOYMENT_RATE, fill = WINNING_PARTY)) +
+  geom_boxplot() +
+  labs(title = "Unemployment Rates by Winning Political Party",
+       x = "Winning Party", y = "Unemployment Rate (%)") +
+  scale_fill_manual(values = c("blue", "red")) +
+  theme_minimal()
+
+```
+
+
+```{r}
+# Select key numerical variables for pairwise analysis
+numerical_vars <- INTEGRATED_DATA %>% 
+  select(PCT_BAC_0R_HIGH_15_19, PCTPOVALL_2019, UNWMPLOYMENT_RATE, TOTAL_VOTES)
+
+pairs(numerical_vars, 
+      main = "Pairwise Relationships Between Key Variables")
+
+```
+
+```{r}
+ggplot(INTEGRATED_DATA, aes(x = PCT_LESS_THAN_HS_15_19)) +
+  geom_histogram(fill = "steelblue", bins = 30, color = "white") +
+  labs(
+    title = "Distribution of Adults with Less Than HS Education",
+    x = "Percent Less Than HS (2015-2019)",
+    y = "Number of Counties"
+  ) +
+  theme_minimal()
+```
+
+```{r}
+ggplot(INTEGRATED_DATA, aes(x = PCTPOVALL_2019)) +
+  geom_histogram(fill = "darkgreen", bins = 30, color = "white") +
+  labs(
+    title = "Distribution of County Poverty Rates (2019)",
+    x = "Poverty Rate (%)",
+    y = "Number of Counties"
+  ) +
+  theme_minimal()
+```
+
+```{r}
+ggplot(INTEGRATED_DATA, aes(x = WINNING_PARTY)) +
+  geom_bar(fill = "tomato") +
+  labs(
+    title = "Winning Party Distribution Across Counties",
+    x = "Winning Party",
+    y = "Number of Counties"
+  ) +
+  theme_minimal()
+```
+
+
+```{r}
+ggplot(INTEGRATED_DATA, aes(x = WINNING_PARTY, y = UNWMPLOYMENT_RATE, fill = WINNING_PARTY)) +
+  geom_boxplot() +
+  labs(
+    title = "Unemployment Rate by Winning Party",
+    x = "Winning Party",
+    y = "Unemployment Rate (%)"
+  ) +
+  theme_minimal()
+```
+
+```{r}
+ggplot(INTEGRATED_DATA, aes(x = WINNING_PARTY, y = PCT_BAC_0R_HIGH_15_19, fill = WINNING_PARTY)) +
+  geom_boxplot() +
+  labs(
+    title = "Percent with Bachelor's or Higher by Winning Party",
+    x = "Winning Party",
+    y = "Percent with Bachelor's or Higher (%)"
+  ) +
+  theme_minimal()
+
+```
+
+```{r}
+ggplot(INTEGRATED_DATA, aes(x = PCT_LESS_THAN_HS_15_19, y = PCTPOVALL_2019)) +
+  geom_point(alpha = 0.6, color = "purple") +
+  geom_smooth(method = "lm", se = FALSE, color = "black") +
+  labs(
+    title = "Relationship Between Education and Poverty",
+    x = "Percent with Less Than HS",
+    y = "Poverty Rate (%)"
+  ) +
+  theme_minimal()
+
+```
+
+```{r}
+ggplot(INTEGRATED_DATA, aes(x = UNWMPLOYMENT_RATE, y = TOTAL_VOTES)) +
+  geom_point(alpha = 0.6, color = "orange") +
+  geom_smooth(method = "lm", se = FALSE, color = "black") +
+  labs(
+    title = "Unemployment Rate vs Total Votes",
+    x = "Unemployment Rate (%)",
+    y = "Total Votes"
+  ) +
+  theme_minimal()
+```
+
+```{r}
+numeric_data <- INTEGRATED_DATA %>%
+  select(PCT_LESS_THAN_HS_15_19, PCT_HS_ONLY_15_19, PCT_SOME_COLLEGE_15_19,
+         PCT_BAC_0R_HIGH_15_19, UNWMPLOYMENT_RATE, PCTPOVALL_2019, TOTAL_VOTES)
+# Pairwise scatterplot matrix
+#ggpairs(numeric_data)
+pairs(numeric_data)
+# Correlation matrix
+cor_matrix <- cor(numeric_data, use = "complete.obs")
+corrplot(cor_matrix, method = "color", type = "upper", tl.cex = 0.8)
+```
+```{r}
+cor_matrix <- cor(numeric_data, use = "complete.obs")
+
+# Base R heatmap
+heatmap(cor_matrix,
+        main = "Correlation Heatmap",
+        col = colorRampPalette(c("blue", "white", "red"))(100),
+        scale = "none")
+```
+
+```{r}
+
+library(GGally)
+library(dplyr)
+
+# Select key numerical variables
+numerical_vars <- INTEGRATED_DATA %>% 
+  select(PCT_BAC_0R_HIGH_15_19, PCTPOVALL_2019, UNWMPLOYMENT_RATE, TOTAL_VOTES)
+
+# Create pairwise plot
+ggpairs(numerical_vars,
+        title = "Pairwise Comparison of Key Numerical Variables",
+        upper = list(continuous = "cor"),  # Show correlation in upper triangle
+        lower = list(continuous = "points"), # Scatterplots in lower triangle
+        diag = list(continuous = "barDiag")) # Histograms on diagonal
+```
+
+```{r}
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+library(tibble)  # needed for rownames_to_column
+
+# Select key numerical variables
+numerical_vars <- INTEGRATED_DATA %>% 
+  select(PCT_BAC_0R_HIGH_15_19, PCTPOVALL_2019, UNWMPLOYMENT_RATE, TOTAL_VOTES)
+
+# Compute correlation matrix
+cor_matrix <- cor(numerical_vars, use = "complete.obs")
+
+# Convert correlation matrix to long format
+cor_long <- as.data.frame(cor_matrix) %>%
+  rownames_to_column(var = "Var1") %>%
+  pivot_longer(-Var1, names_to = "Var2", values_to = "Correlation")
+
+# Plot heatmap
+ggplot(cor_long, aes(x = Var1, y = Var2, fill = Correlation)) +
+  geom_tile(color = "white") +
+  geom_text(aes(label = round(Correlation, 2)), size = 4) +
+  scale_fill_gradient2(low = "blue", high = "red", mid = "white", midpoint = 0,
+                       limit = c(-1,1), name = "Correlation") +
+  theme_minimal() +
+  labs(title = "Pairwise Relationships Between Key Variables", x = "", y = "")
+```
+
+```{r}
+ggplot(INTEGRATED_DATA, aes(x = PCT_BAC_0R_HIGH_15_19, y = PCTPOVALL_2019, color = WINNING_PARTY)) +
+  geom_point(alpha = 0.7) +
+  geom_smooth(method = "lm", se = FALSE) +
+  labs(title = "Bachelor's Degree vs Poverty Rate by Party",
+       x = "Percentage with Bachelor's Degree or Higher",
+       y = "Poverty Rate (%)") +
+  theme_minimal()
+```
+```{r}
+ggplot(INTEGRATED_DATA, aes(x = WINNING_PARTY, y = UNWMPLOYMENT_RATE, fill = WINNING_PARTY)) +
+  geom_boxplot() +
+  scale_fill_manual(values = c("blue", "red")) +
+  labs(title = "Unemployment Rate by Winning Party",
+       x = "Winning Party", y = "Unemployment Rate (%)") +
+  theme_minimal()
+
+# Violin plot
+ggplot(INTEGRATED_DATA, aes(x = WINNING_PARTY, y = PCTPOVALL_2019, fill = WINNING_PARTY)) +
+  geom_violin(alpha = 0.6) +
+  scale_fill_manual(values = c("blue", "red")) +
+  labs(title = "Poverty Rate Distribution by Party",
+       x = "Winning Party", y = "Poverty Rate (%)") +
+  theme_minimal()
+```
+```{r}
+ggplot(INTEGRATED_DATA, aes(x = PCT_BAC_0R_HIGH_15_19, y = PCTPOVALL_2019, 
+                 size = TOTAL_VOTES, color = WINNING_PARTY)) +
+  geom_point(alpha = 0.6) +
+  scale_size(range = c(1, 10)) +
+  labs(title = "Education vs Poverty with Total Votes",
+       x = "Percentage with Bachelor's Degree or Higher",
+       y = "Poverty Rate (%)",
+       size = "Total Votes") +
+  theme_minimal()
+```
+
+
+
+
