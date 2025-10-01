@@ -1,0 +1,166 @@
+---
+title: "EDA process"
+author: "Kelly Adu-Gyamfi"
+date: "2025-10-01"
+output: html_document
+---
+
+```{r}
+library(readxl)
+health_dataset_updated <- read_excel("health_dataset_updated.xlsx")
+View(health_dataset_updated)
+```
+
+```{r}
+health_dataset <- health_dataset_updated %>%
+  mutate(Name = str_to_title(Name),
+         Gender = str_to_title(Gender),
+         Medical_Condition = str_to_title(Medical_Condition),
+         Admission_Type = str_to_title(Admission_Type))
+```
+
+
+```{r}
+# Make sure to load stringr for text cleaning
+library(stringr)
+
+# Fix inconsistent capitalization in Name and Gender
+health_dataset_updated$Name <- str_to_title(health_dataset_updated$Name)   # e.g., "Bobby Jackson"
+health_dataset_updated$Gender <- str_to_title(health_dataset_updated$Gender) # e.g., "Male", "Female"
+View(health_dataset_updated)
+```
+
+
+```{r}
+colnames(health_dataset_updated)
+```
+```{r}
+# Missing values
+colSums(is.na(health_dataset))
+
+# Check for inconsistent capitalizations
+health_dataset <- health_dataset %>%
+  mutate(Name = str_to_title(Name),
+         Gender = str_to_title(Gender),
+         Medical_Condition = str_to_title(Medical_Condition),
+         Admission_Type = str_to_title(Admission_Type))
+
+```
+
+```{r}
+library(dplyr)
+library(stringr)
+
+# 1️⃣ Clean Name and Gender
+health_dataset_updated <- health_dataset_updated %>%
+  mutate(
+    Name = str_to_title(Name),
+    Gender = str_to_title(Gender)
+  )
+
+# 2️⃣ Recalculate length_of_stay
+health_dataset_updated <- health_dataset_updated %>%
+  mutate(length_of_stay_calc = as.numeric(Discharge_Date - Admission_Date),
+         length_mismatch = length_of_stay != length_of_stay_calc,
+         length_of_stay = length_of_stay_calc)  # Replace with computed value
+
+# 3️⃣ Quick check
+summary(health_dataset_updated)
+View(health_dataset_updated)
+```
+```{r}
+library(ggplot2)
+
+ggplot(health_dataset_updated, aes(x = length_of_stay, y = length_of_stay_calc)) +
+  geom_point(alpha = 0.3, color = "steelblue") +
+  geom_abline(slope = 1, intercept = 0, color = "red", linetype = "dashed") +
+  labs(
+    title = "Original vs Computed Length of Stay",
+    x = "Original length_of_stay",
+    y = "Computed length_of_stay_calc"
+  ) +
+  theme_minimal()
+```
+
+
+
+
+
+
+
+```{r}
+library(lubridate)
+library(dplyr)
+
+# Monthly admissions over time
+health_dataset_updated %>%
+  group_by(Year = year(Admission_Date), Month = month(Admission_Date)) %>%
+  summarise(Count = n()) %>%
+  ggplot(aes(x = as.Date(paste(Year, Month, 1, sep = "-")), y = Count)) +
+  geom_line(color = "blue") +
+  labs(title = "Monthly Admissions Over Time", x = "Month", y = "Number of Admissions") +
+  theme_minimal()
+```
+
+```{r}
+health_dataset_updated %>%
+  group_by(Year = year(Admission_Date), Month = month(Admission_Date)) %>%
+  summarise(Count = n()) %>%
+  mutate(Month_Year = as.Date(paste(Year, Month, 1, sep = "-"))) %>%
+  ggplot(aes(x = Month_Year, y = Count)) +
+  geom_col(fill = "steelblue") +
+  labs(title = "Monthly Admissions Over Time", x = "Month", y = "Number of Admissions") +
+```
+
+
+
+```{r}
+health_dataset_updated %>%
+  mutate(Month = month(Admission_Date, label = TRUE)) %>%
+  group_by(Year = year(Admission_Date), Month) %>%
+  summarise(Count = n()) %>%
+  ggplot(aes(x = Month, y = factor(Year), fill = Count)) +
+  geom_tile(color = "white") +
+  scale_fill_viridis_c(option = "C") +
+  labs(title = "Monthly Admissions Heatmap", x = "Month", y = "Year", fill = "Admissions") +
+  theme_minimal()
+```
+
+```{r}
+# Top 10 Doctors by number of patients
+health_dataset_updated %>%
+  count(Doctor, sort = TRUE) %>%
+  top_n(10) %>%
+  ggplot(aes(x = reorder(Doctor, n), y = n)) +
+  geom_col(fill = "steelblue") +
+  coord_flip() +
+  labs(title = "Top 10 Doctors by Number of Patients", x = "Doctor", y = "Number of Patients") +
+  theme_minimal()
+```
+
+```{r}
+ggplot(health_dataset_updated, aes(x = `Admission Type`, y = `Billing Amount`, fill = Gender)) +
+  geom_boxplot(position = position_dodge(width = 0.8)) +
+  labs(title = "Billing Amount by Admission Type and Gender", x = "Admission Type", y = "Billing Amount") +
+  theme_minimal()
+```
+
+```{r}
+ggplot(health_dataset_updated, aes(x = Age)) +
+  geom_histogram(binwidth = 10, fill = "steelblue", color = "white") +
+  labs(title = "Age Distribution", x = "Age", y = "Count")
+```
+
+```{r}
+# Summary by medical condition
+library(dplyr)
+health_dataset_updated %>%
+  group_by(Age_Group, Critical) %>%
+  summarise(
+    Avg_Billing = mean(Billing_Amount, na.rm = TRUE),
+    Avg_LOS = mean(length_of_stay_calc, na.rm = TRUE),
+    Count = n()
+  )
+
+```
+

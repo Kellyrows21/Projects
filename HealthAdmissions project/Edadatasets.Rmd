@@ -1,0 +1,269 @@
+---
+title: "EDA and Feature engineering"
+author: "Kelly Adu-Gyamfi"
+date: "2025-10-01"
+output: html_document
+---
+
+
+```{r}
+library(readr)
+healthcare_dataset <- read_csv("~/Desktop/APPLIED STATISTICS 2/STA551/Lecture 5/Project/healthcare_dataset.csv")
+View(healthcare_dataset)
+```
+
+```{r}
+library(lubridate)
+library(dplyr)
+
+# Assuming your dataset is called healthcare_dataset
+health_dataset <- healthcare_dataset %>%
+  mutate(
+    # Convert columns to Date format (replace these names if different)
+    date_of_admission = as.Date(Date_of_Admission, format = "%Y-%m-%d"),
+    discharge_date = as.Date(Discharge_Date, format = "%Y-%m-%d"),
+    
+    # Calculate length of stay in days
+    length_of_stay = as.numeric(discharge_date - date_of_admission)
+  )
+```
+```{r}
+colnames(healthcare_dataset)
+```
+```{r}
+library(dplyr)
+
+health_dataset <- healthcare_dataset %>%
+  mutate(
+    date_of_admission = as.Date(`Date of Admission`),
+    discharge_date = as.Date(`Discharge Date`),
+    length_of_stay = as.numeric(discharge_date - date_of_admission)
+  )
+```
+
+```{r}
+install.packages("writexl")      # run this once
+library(writexl)
+
+write_xlsx(health_dataset, "health_dataset_updated.xlsx")
+```
+---
+title: "Exploratory Data Analysis: Education, Poverty, Unemployment, and Voting Patterns"
+author: "Adu-Gyamfi Kelly"
+date: "2025-09-24"
+output:
+  html_document:
+    toc: yes
+    toc_float: yes
+    toc_depth: 4
+    fig_width: 6
+    fig_height: 4
+    fig_caption: yes
+    number_sections: yes
+    code_folding: hide
+    code_download: yes
+    smooth_scroll: yes
+    theme: lumen
+    highlight: tango
+  word_document:
+    toc: yes
+    toc_depth: 4
+  pdf_document:
+    toc: yes
+    toc_depth: 4
+    fig_caption: yes
+    number_sections: yes
+---
+
+```{css, echo = FALSE}
+div#TOC li {     /* table of content  */
+    list-style:upper-roman;
+    background-image:none;
+    background-repeat:none;
+    background-position:0;
+}
+
+h1.title {    /* level 1 header of title  */
+  font-size: 24px;
+  font-weight: bold;
+  color: Green;
+  text-align: center;
+}
+
+h4.author { /* Header 4 - and the author and data headers use this too  */
+  font-size: 18px;
+  font-weight: bold;
+  font-family: "Times New Roman", Times, serif;
+  color: Green;
+  text-align: center;
+}
+
+h4.date { /* Header 4 - and the author and data headers use this too  */
+  font-size: 18px;
+  font-weight: bold;
+  font-family: "Times New Roman", Times, serif;
+  color: Red;
+  text-align: center;
+}
+
+h1 { /* Header 1 - and the author and data headers use this too  */
+    font-size: 20px;
+    font-weight: bold;
+    font-family: "Times New Roman", Times, serif;
+    color: Green;
+    text-align: center;
+}
+
+h2 { /* Header 2 - and the author and data headers use this too  */
+    font-size: 18px;
+    font-weight: bold;
+    font-family: "Times New Roman", Times, serif;
+    color: Blue;
+    text-align: left;
+}
+
+h3 { /* Header 3 - and the author and data headers use this too  */
+    font-size: 16px;
+    font-weight: bold;
+    font-family: "Times New Roman", Times, serif;
+    color: Blue;
+    text-align: left;
+}
+
+h4 { /* Header 4 - and the author and data headers use this too  */
+    font-size: 14px;
+  font-weight: bold;
+    font-family: "Times New Roman", Times, serif;
+    color: Blue;
+    text-align: left;
+}
+
+/* Add dots after numbered headers */
+.header-section-number::after {
+  content: ".";
+}
+```
+
+```{r setup, include=FALSE}
+# code chunk specifies whether the R code, warnings, and output 
+# will be included in the output files.
+
+if (!require("knitr")) {                      # use conditional statement to detect
+   install.packages("knitr")                  # whether a package was installed in
+   library(knitr)                             # your machine. If not, install it and
+}                                             # load it to the working directory.
+#
+knitr::opts_chunk$set(echo = TRUE,            # include code chunk in the output file
+                      warning = FALSE,        # sometimes, you code may produce warning messages,
+                                              # you can choose to include the warning messages in
+                                              # the output file. 
+                      results = TRUE,         # you can also decide whether to include the output
+                                              # in the output file.
+                      message = FALSE,        # suppress messages 
+                      comment = NA            # remove the default leading hash tags in the output
+                      )   
+```
+
+# Objective Statement & Background
+
+This exploratory data analysis examines the relationship between educational attainment, unemployment rates, poverty levels, and political voting patterns across US counties. The objective is to identify potential correlations between socioeconomic factors and political outcomes, which could inform further research into the determinants of voting behavior at the county level.
+The dataset contains county-level information from the United States, including educational attainment statistics, unemployment rates, poverty percentages, and 2020 presidential election results.
+
+
+# Data Set Description
+
+- **Source**: Compiled from US Census Bureau data and election results  
+- **Collection Method**: Government statistical reports and official election records  
+- **Size**: Contains data for multiple counties across states  
+- **Variables**: 15 variables mixing categorical and numerical types  
+
+## Variable Definitions
+
+- **COUNTY_FIPS**: Unique county identifier code  
+- **State**: Two-letter state abbreviation  
+- **Area_name**: County or region name  
+- **LESS_THAN_HS**: Count of population with less than high school education  
+- **HS_ONLY**: Count with high school diploma only  
+- **SOME_COLLEGE_15_19**: Count with some college education  
+- **BACHELORS_15_19**: Count with bachelor's degree or higher  
+- **PCT_LESS_THAN_HS_15_19**: Percentage with less than high school education  
+- **PCT_HS_ONLY_15_19**: Percentage with high school diploma only  
+- **PCT_SOME_COLLEGE_15_19**: Percentage with some college education  
+- **PCT_BAC_0R_HIGH_15_19**: Percentage with bachelor's degree or higher  
+- **WINNING_PARTY**: Political party that won the county (REPUBLICAN/DEMOCRAT)  
+- **TOTAL_VOTES**: Total votes cast in the county  
+- **UNWMPLOYMENT_RATE**: County unemployment rate  
+- **PCTPOVALL_2019**: Percentage of population living in poverty  
+
+# Exploratory Data Analysis
+
+
+
+
+```{r echo = FALSE, fig.align='center', out.width="80%"}
+include_graphics("Density.png")
+```
+
+
+**Interpretation**: The histogram shows the distribution of different educational attainment levels across US counties. We can observe that most counties have similar patterns, but there is significant variation in the percentage of population with bachelor's degrees or higher.
+
+# Relationship Between Education and Poverty
+
+```{r echo = FALSE, fig.align='center', out.width="90%"}
+include_graphics("scatter.png")
+```
+
+
+
+
+**Interpretation**: This scatterplot reveals a negative correlation between the percentage of population with bachelor's degrees and poverty rates. Counties with higher educational attainment tend to have lower poverty rates. The coloring by winning political party suggests potential patterns in how these factors relate to voting behavior
+
+# Unemployment by Political Affiliation
+
+```{r echo = FALSE, fig.align='center', out.width="80%"}
+include_graphics("Boxplot.png")
+```
+
+
+
+
+**Interpretation**: The boxplot compares unemployment rates between counties that voted Republican versus Democratic. Preliminary analysis suggests differences in economic conditions between counties favoring different parties, which warrants further investigation.
+
+
+# Pairwise Relationship Between Numeical Variables
+
+```{r echo = FALSE, fig.align='center', out.width="80%"}
+include_graphics("Heatmap.png")
+```
+
+# Interpretation 
+
+**Education vs Poverty (-0.49) **: This is a moderate negative correlation. It means that as the percentage of the population with a bachelor's degree or higher increases, the poverty rate tends to decrease. This is one of the most consistent findings in social science and is clearly visible in this data. Higher educational attainment is associated with lower levels of poverty.
+
+
+**Education vs. Total Votes (-0.37)**: There is a weak to moderate negative correlation between education levels and the total number of votes. This could be interpreted in a few ways (e.g., perhaps more educated areas are smaller, or have lower voter turnout), but the relationship is not as strong as with poverty.
+
+**Poverty vs. Unemployment (0.30)**: There is a weak positive correlation. As expected, areas with higher poverty rates tend to have slightly higher unemployment rates, though the relationship is not extremely strong.
+
+**Unemployment vs. Total Votes (0.19)**: A very weak positive correlation, suggesting a minimal relationship between unemployment and the number of votes cast.
+
+**Education vs. Unemployment (-0.09)**: The correlation is very close to zero, indicating almost no linear relationship between the educational attainment level in an area and its unemployment rate in this particular dataset. This is a interesting finding, as it might be counterintuitive.
+
+
+
+
+# Results & Discussion
+
+The exploratory analysis reveals several noteworthy patterns:
+
+- **Educational attainment shows significant variation** across US counties, with substantial differences in the percentage of population with bachelor's degrees or higher.  
+- **Strong inverse relationship exists between education and poverty** — counties with higher educational attainment consistently show lower poverty rates.  
+- **Preliminary political patterns emerge** — counties with different voting patterns appear to have distinct socioeconomic profiles, though causal relationships cannot be established from this exploratory analysis.  
+- **Economic indicators correlate with each other** — unemployment and poverty rates tend to move together, suggesting interconnected economic challenges.  
+
+These findings raise additional research questions worthy of investigation:
+
+- Does the relationship between education and voting behavior hold when controlling for other factors?  
+- How do regional differences (e.g., urban vs. rural) mediate these relationships?  
+- What causal mechanisms might explain the correlation between education levels and political outcomes?  
+
