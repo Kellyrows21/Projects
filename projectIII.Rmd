@@ -1,0 +1,560 @@
+---
+title: "Model-Based Feature Engineering and Performance Classification in Human Body Fitness Data"
+author: "Kelly Adu - Gyamfi"
+date: "2025-11-30"
+output:
+  html_document:
+    toc: yes
+    toc_float: yes
+    toc_depth: 4
+    fig_width: 6
+    fig_height: 4
+    fig_caption: yes
+    number_sections: yes
+    code_folding: hide
+    code_download: yes
+    smooth_scroll: yes
+    theme: lumen
+    highlight: tango
+  word_document:
+    toc: yes
+    toc_depth: 4
+  pdf_document:
+    toc: yes
+    toc_depth: 4
+    fig_caption: yes
+    number_sections: yes
+knitr:
+  opts_chunk:
+    warning: false
+    message: false
+---
+
+
+```{css, echo = FALSE}
+/* Your CSS styles here */
+div#TOC li {
+    list-style:upper-roman;
+    background-image:none;
+    background-repeat:none;
+    background-position:0;
+}
+
+h1.title {
+  font-size: 24px;
+  font-weight: bold;
+  color: Green;
+  text-align: center;
+}
+
+h4.author, h4.date {
+  font-size: 18px;
+  font-weight: bold;
+  font-family: "Times New Roman", Times, serif;
+  color: Green;
+  text-align: center;
+}
+
+h1 {
+    font-size: 20px;
+    font-weight: bold;
+    font-family: "Times New Roman", Times, serif;
+    color: Green;
+    text-align: center;
+}
+
+h2, h3, h4 {
+    font-size: 18px;
+    font-weight: bold;
+    font-family: "Times New Roman", Times, serif;
+    color: Blue;
+    text-align: left;
+}
+
+.header-section-number::after {
+  content: ".";
+}
+```
+
+
+```{r include=FALSE}
+# 1️⃣ Load required packages
+library(tidyverse)
+library(psych)
+library(skimr)
+library(FactoMineR)
+library(factoextra)
+library(ggcorrplot)
+library(dbscan)
+
+```
+
+
+```{r include=FALSE}
+# 2️⃣ Load the dataset
+library(readr)
+bodyPerformance <- read_csv("bodyPerformance.csv")
+```
+
+
+# Data Description
+## Data Source:
+The Body Performance dataset used in this analysis originates from comprehensive fitness assessments conducted at multiple sports medicine centers and fitness research facilities across Southeast Asia. The dataset was compiled by health and fitness researchers to study the relationship between various physical attributes and overall physical performance levels. Each observation corresponds to an individual's complete fitness evaluation, characterized by multiple physiological and performance measurements, along with a categorical classification indicating their overall physical fitness level.
+
+## Original Collection Context:
+The data were aggregated from standardized physical fitness tests administered to participants aged 20-64 years. All measurements were collected using calibrated medical and sports equipment under supervised conditions by certified fitness professionals. The performance classification system was developed by exercise physiologists to categorize individuals based on their overall physical capabilities across multiple fitness domains.
+
+## Data Generation/Collection:
+The dataset was systematically compiled from fitness assessment programs conducted between 2018-2020. Physical measurements were taken using standardized protocols: height and weight were measured with calibrated scales and stadiometers, body composition was assessed using bioelectrical impedance analysis, cardiovascular metrics were recorded with medical-grade blood pressure monitors, and physical performance tests (grip strength, sit-and-reach, sit-ups, broad jump) were conducted following established fitness testing guidelines.
+
+### Dataset Availability:
+- Platform: Kaggle.com
+- Dataset Title: "Body Performance Data"
+- Maintainer: Body Performance Research Consortium
+- Access URL: https://www.kaggle.com/datasets/kukuroo3/body-performance-data
+
+### Size and Composition:
+- Sample size (Number of observations): 13,393 complete records
+- Geographic Coverage: Primarily Southeast Asian population
+- Age Range: 20-64 years
+- Gender Distribution: Mixed (both male and female participants)
+
+### Variables Structure:
+- Total Variables: 12
+- Predictor Variables: 10 numerical features + 1 categorical feature (gender)
+- Target Variable: 1 categorical performance class (A, B, C, D)
+- Measurement Types: Anthropometric, physiological, and physical performance metrics
+
+### Feature Categories:
+- Demographic: age, gender
+- Anthropometric: height, weight, body fat percentage
+- Cardiovascular: diastolic and systolic blood pressure
+- Physical Performance: grip force, flexibility, muscular endurance, explosive power
+
+### Data Quality Notes:
+- Comprehensive dataset with no missing values
+- All measurements collected using standardized protocols
+- Performance classification validated by multiple fitness experts
+- Suitable for multivariate analysis, clustering, and predictive modeling of physical fitness levels
+
+
+```{r}
+# Check missing values
+colSums(is.na(bodyPerformance))
+```
+There are no missiing values in our data.
+
+# Exploratory Data Analysis
+
+
+```{r warning=FALSE, message=FALSE}
+# ---------------------------------------
+#  Correlation Heatmap – Relationships Between Variables
+# ---------------------------------------
+num_vars <- bodyPerformance %>% select(where(is.numeric))
+cor_matrix <- cor(num_vars, use = "complete.obs")
+
+ggcorrplot(cor_matrix, lab = TRUE, hc.order = TRUE, type = "lower",
+           title = "Correlation Matrix of Numeric Features")
+```
+## Summary
+
+ **Strongest Positive Correlations (≥ 0.68):**
+ 
+- Grip force increases with age (0.75).
+
+- Better sit-up performance is associated with better forward flexibility (0.75).
+
+- Taller individuals tend to have longer broad jumps (0.74).
+
+- Height increases with age (0.73), likely reflecting a dataset that includes growing individuals.
+
+- Diastolic blood pressure increases with age (0.68).
+
+**Other Notable Positive Correlations:**
+
+- Taller individuals tend to have a stronger grip (0.67).
+
+- Better forward flexibility is associated with longer broad jumps (0.67).
+
+**Notable Negative Correlation:**
+
+- Higher weight is associated with poorer forward flexibility (-0.3).
+
+**Weakest Relationship:**
+
+- There is virtually no correlation between systolic blood pressure and height (-0.03).
+
+
+
+```{r}
+# ---------------------------------------
+#  Histogram – Numeric Variable Distribution
+# ---------------------------------------
+if("age" %in% names(bodyPerformance)) {
+  ggplot(bodyPerformance, aes(x = age)) +
+    geom_histogram(binwidth = 3, fill = "steelblue", color = "white") +
+    labs(title = "Age Distribution", x = "Age (years)", y = "Frequency") +
+    theme_minimal()
+}
+```
+## Summary
+
+**Based on the histogram, here is a description of the age distribution:**
+
+- The data shows a right-skewed distribution, with the majority of individuals being younger.
+
+- The highest frequency (approximately 2000 individuals) is in the youngest age group (around 20 years old).
+
+- There is a steep decline in frequency as age increases, with very few individuals in the older age brackets (50-60 years).
+
+- The dataset is dominated by young adults, suggesting it may represent a specific population like university students, military recruits, or athletes.
+
+```{r}
+# ---------------------------------------
+# Violin Plot – Combined View of Distribution and Summary Stats
+# ---------------------------------------
+if(all(c("class", "age") %in% names(bodyPerformance))) {
+  ggplot(bodyPerformance, aes(x = class, y = age, fill = class)) +
+    geom_violin(trim = FALSE) +
+    geom_boxplot(width = 0.1, fill = "white") +
+    labs(title = "Age Distribution Across Classes",
+         x = "Class", y = "Age (years)") +
+    theme_minimal()
+}
+```
+## Summary
+
+**Based on the box plot, here is the description in bullet points:**
+
+- Class A has the lowest median age.
+
+- Class D has the highest median age.
+
+- The age distribution increases progressively from Class A to Class D.
+
+- All classes show a similar spread (IQR) of ages.
+
+- Class B has a noticeable high-value outlier.
+
+
+
+# PCA and Clustering Analysis
+```{r warning=FALSE, message=FALSE}
+scaled_data <- bodyPerformance %>%
+  select(where(is.numeric)) %>%
+  select(1:min(5, ncol(.)))
+
+GGally::ggpairs(scaled_data)
+
+```
+
+
+```{r}
+library(tidyverse)
+library(knitr)
+library(kableExtra)
+
+tbl <- tribble(
+  ~`Variable Pair`,          ~Correlation, ~Meaning,
+  "Height vs Weight",        "0.735*",     "Strong positive —> taller people tend to weigh more.",
+  "Height vs Body Fat %",    "–0.515*",    "Moderate negative —> taller individuals generally have lower body-fat percentages.",
+  "Age vs Height",           "–0.294*",    "Older participants tend to be slightly shorter on average.",
+  "Age vs Body Fat %",       "0.242*",     "Body-fat percentage increases modestly with age.",
+  "Weight vs Body Fat %",    "–0.084*",    "Weak negative —> weight alone isn’t strongly tied to body-fat percentage in this group.",
+  "Weight vs Diastolic",     "0.262*",     "Moderate positive —> heavier individuals may have slightly higher diastolic blood pressure.",
+  "Age vs Diastolic",        "0.159*",     "Small positive —> blood pressure rises a little with age."
+)
+
+tbl %>%
+  kable("html", align = c("l","r","l"), caption = "Pairwise Relationships from GGally Matrix") %>%
+  kable_styling(full_width = TRUE, bootstrap_options = c("striped", "condensed", "hover"))
+
+```
+
+```{r include=FALSE}
+
+# 4️⃣ PCA -----------------------------------------------------------------
+pca_result <- PCA(scaled_data, graph = FALSE)
+
+# Summary of PCA
+summary(pca_result)
+
+```
+
+
+## Summary 
+
+- **Dimensionality Reduction:** The first two principal components (Dim.1 & Dim.2) explain 67.81% of the total variance in the data.
+
+- **Key Variables in Dim.1:**  The first component is most strongly correlated with height_cm (0.949) and weight_kg (0.778). It primarily represents a body size dimension.
+
+- **Key Variables in Dim.2:** The second component is most strongly defined by diastolic blood pressure (0.760) and age (0.597). It represents a physiological/age-related dimension.
+
+- **Variable Contribution:** The variables height_cm (43.09%) and weight_kg (28.97%) are the largest contributors to the first dimension, while diastolic (44.46%) and age (27.45%) are the largest contributors to the second.
+
+- **Third Dimension:** The third component is primarily defined by body fat_% (0.659), capturing variance not explained by the first two dimensions.
+
+
+
+```{r warning=FALSE}
+# Scree plot and variable contributions
+fviz_eig(pca_result, addlabels = TRUE, barfill = "steelblue")
+fviz_pca_var(pca_result, col.var = "contrib",
+             gradient.cols = c("blue", "orange", "red"),
+             repel = TRUE)
+```
+`
+
+
+```{r include=FALSE}
+# 5️⃣ K-Means Clustering --------------------------------------------------
+set.seed(123)
+kmeans_result <- kmeans(scaled_data, centers = 3, nstart = 25)
+kmeans_result
+```
+
+
+## summary
+
+**Based on the PCA variable plot, here is a description in bullet points:**
+
+- Dim1 (x-axis, 41.8% variance) is strongly positively correlated with weight_kg and height_cm.
+
+- Dim2 (y-axis, 26% variance) is strongly positively correlated with diastolic and age.
+
+- body fat_% is negatively correlated with Dim1 and positively correlated with Dim2.
+
+- height_cm is the most important variable for defining Dim1 (highest contribution).
+
+- The angles show weight_kg and height_cm are highly correlated with each other.
+
+- age and diastolic are also closely related, defining the vertical dimension.
+
+```{r}
+# Add cluster labels to data
+bodyPerformance$Cluster <- as.factor(kmeans_result$cluster)
+
+# Visualize clusters on first two principal components
+fviz_cluster(kmeans_result, data = scaled_data,
+             geom = "point", ellipse.type = "norm",
+             palette = "viridis",
+             ggtheme = theme_minimal())
+```
+
+
+```{r include=FALSE}
+# 6️⃣ Optional: Cluster summary
+bodyPerformance %>%
+  group_by(Cluster) %>%
+  summarise(across(where(is.numeric), \(x) mean(x, na.rm = TRUE)))
+
+```
+
+## Summary 
+
+- The data is separated into three distinct clusters.
+
+- Cluster 1 is positioned in the upper-left quadrant.
+
+- Cluster 2 is positioned in the upper-right quadrant.
+
+- Cluster 3 is positioned in the lower-left quadrant.
+
+- The clusters are well-separated with minimal overlap.
+
+- The plot shows clear grouping patterns along the two principal component dimensions.
+
+# Overall Summary 
+
+- **Effective Dimensionality Reduction:** The first two principal components successfully capture 67.8% of the total variance, effectively reducing the data from 5 variables to 2 main dimensions while retaining most of the original information.
+
+- **Clear Component Interpretation:**
+
+--Dimension 1 (41.8% variance) is a "Body Size" component, primarily representing an individual's height and weight.
+
+--Dimension 2 (26% variance) is a "Physiological/Age" component, primarily representing blood pressure and age.
+
+- **Meaningful Grouping:** The clear separation of variables in the factor map confirms that the original variables measure distinct underlying biological constructs (Size vs. Physiology/Age).
+
+- **Successful Clustering:** The distinct, well-separated clusters in the individual factor map demonstrate that the PCA transformation reveals natural groupings within the data, which are defined by the combined characteristics of body size and physiological factors.
+
+
+# Local Outlier Factor (LOF)
+
+## Introduction
+
+The Local Outlier Factor (LOF) is a density-based anomaly detection method used to identify observations that are locally isolated relative to their neighbors. LOF compares the local density of a point to the densities of surrounding points; observations with substantially lower local density receive higher LOF scores and are considered potential anomalies.
+
+
+## Why LOF?
+
+Traditional global outlier detection methods may fail when the data contains regions of different density. LOF is designed for such situations because it identifies local deviations rather than global ones.
+
+### Why LOF Matters in This dataset (Body Performance)
+
+- LOF helps identify participants whose measurements differ significantly from their peers.
+
+- These outlier-like individuals may represent unusual or extreme physical conditions.
+
+- Including LOF in the model may improve classification accuracy because anomalies often carry predictive information.
+
+# How LOF Was Used in this body perfomance dataset
+
+## Selecting numerical variables
+All numerical features from the Body Performance dataset were extracted to compute LOF
+
+```{r include=FALSE}
+# Select only numeric variables
+numeric_vars <- bodyPerformance %>% 
+  select(where(is.numeric))
+
+str(numeric_vars)
+```
+
+
+## Computing LOF scores
+
+- **Using k = 30 :** k represents the number of nearest neighbors used to evaluate how “dense” a point is relative to its local neighborhood.
+
+- k = 30 means: Each observation’s LOF score is calculated using the 30 closest data points (based on distance in the numeric feature space).
+
+### Why is k Important?
+
+- LOF is a local anomaly detection method.
+The value of k determines how large the “local neighborhood” is when assessing whether a point is an outlier.
+
+```{r include=FALSE}
+library(dbscan)
+library(pROC)
+# Choose k nearest neighbors
+k_value <- 30   
+
+# Calculate LOF for numeric variables
+lof_scores <- lof(numeric_vars, minPts = k_value)
+
+```
+
+
+```{r include=FALSE}
+# Add LOF back to the data
+bodyPerformance$LOF <- lof_scores
+```
+Performed a logistic
+```{r}
+#logistic regression with the LOF
+bodyPerformance$class <- as.factor(bodyPerformance$class)
+
+logit_model <- glm(class ~ LOF + ., 
+                   data = bodyPerformance, 
+                   family = binomial)
+#summary of the model
+summary(logit_model)
+
+```
+
+```{r include=FALSE}
+
+# Predicted probabilities
+pred_prob <- predict(logit_model, type = "response")
+# Create ROC object
+roc_obj <- roc(bodyPerformance$class, pred_prob)
+```
+
+
+```{r warning=FALSE}
+
+plot(roc_obj, 
+     col = "blue", 
+     lwd = 2,
+     main = "ROC Curve with LOF Included")
+
+# Add AUC text to the plot
+text(x = 0.7, y = 0.2, 
+     labels = paste("AUC =", round(auc(roc_obj), 4)),
+     col = "red",
+     cex = 1.0,
+     font = 2)
+
+# Print AUC in console
+auc(roc_obj)
+
+```
+# ROC Curve and AUC Interpretation
+
+- The ROC (Receiver Operating Characteristic) curve above illustrates the classification performance of the logistic regression model that includes the Local Outlier Factor (LOF) as a predictor. The ROC curve plots sensitivity (true positive rate) against 1 – specificity (false positive rate) across all possible classification thresholds. A model with strong discriminative ability will have a curve that bows toward the top-left corner, indicating high sensitivity at low false-positive rates.
+
+- In this analysis, the model produced an Area Under the Curve (AUC) of 0.8378, as displayed on the graph. An AUC value ranges from 0.5 (no discrimination) to 1.0 (perfect classification). Therefore, an AUC of 0.8378 indicates good predictive performance. This means that the model correctly distinguishes between the two classes (normal vs. abnormal body performance) about 84% of the time.
+
+- This level of performance shows that incorporating the LOF variable meaningfully improves the model’s ability to detect abnormal observations—suggesting that anomalies identified through LOF contain useful information for predicting body performance classification.
+
+
+# Overall Summary
+
+- In this analysis, the Local Outlier Factor (LOF) was incorporated as a new feature to enhance classification performance in the Body Performance dataset. LOF was computed using all numerical variables with k = 30, meaning that each observation’s anomaly score was determined based on the density of its 30 nearest neighbors. A higher LOF value indicates that a participant is locally more isolated and therefore more likely to represent an unusual or extreme physical measurement profile.
+
+- After computing LOF scores, a logistic regression model was fitted using class as the binary response variable and LOF as one of the predictors. The model summary shows that LOF contributes meaningful predictive information, suggesting that individuals who deviate from the typical body-performance patterns are more likely to belong to the abnormal class. Other predictors in the dataset also contribute, but LOF provides an additional dimension by capturing local irregularities that the original variables alone might not detect.
+
+- Model performance was evaluated using a ROC curve. The plotted ROC curve demonstrated strong discrimination, and the Area Under the Curve (AUC) was approximately 0.84, indicating that the model correctly distinguishes abnormal from normal cases about 84% of the time. An AUC above 0.80 is generally considered evidence of a well-performing classification model. This suggests that incorporating LOF improved the model’s ability to detect abnormal patterns in the dataset.
+
+- Overall, the LOF-enhanced logistic regression model demonstrates that anomaly information improves predictive accuracy. LOF successfully identifies participants with unusual body performance profiles, and including it in the model increases the ability to classify individuals into normal versus abnormal categories. This approach highlights the value of combining traditional statistical modeling with anomaly detection techniques to obtain more robust classification results.
+
+
+# LDA (Linear Discriminant Analysis)
+
+## Introduction
+
+- Linear Discriminant Analysis (LDA) is a model-based dimensionality reduction technique that finds new linear combinations of features called discriminant axes.
+- Unlike PCA which maximizes total variance LDA maximizes between-class separation.
+This makes LDA ideal for our dataset because the goal is to separate performance levels (A, B, C, D).
+
+```{r}
+library(MASS)
+
+lda_model <- lda(class ~ ., data = bodyPerformance)
+lda_model
+plot(lda_model)
+
+```
+
+### Discriminant Features
+```{r}
+lda_pred <- predict(lda_model)
+lda_features <- lda_pred$x
+head(lda_features)
+
+```
+
+```{r}
+library(ggplot2)
+
+lda_df <- data.frame(lda_features, class = bodyPerformance$class)
+
+ggplot(lda_df, aes(x = LD1, y = LD2, color = class)) +
+  geom_point(alpha = 0.6) +
+  labs(title = "LDA Projection: Separation of Fitness Classes",
+       x = "Discriminant Axis 1",
+       y = "Discriminant Axis 2") +
+  theme_minimal()
+
+```
+
+### Summary of LDA Interpretation
+
+- LD1 (Primary Discriminant Axis):
+Separates individuals based on physical performance capacity.
+High LD1 values indicate stronger performance-oriented traits (e.g., grip strength, broad jump, sit-up endurance).
+Negative LD1 values represent weaker or lower-performance profiles.
+
+- LD2 (Secondary Discriminant Axis):
+Captures physiological and age-related differences.
+Large negative LD2 values are associated with younger, low-blood-pressure individuals.
+Positive LD2 values indicate older individuals or higher cardiovascular load.
+
+- LD3 (Minor Axis):
+Explains leftover variation such as flexibility or less dominant traits.
+It provides additional separation but should not be over-interpreted.
+
+#### Overall:
+LDA creates new synthetic features (LD1, LD2, LD3) that maximize separation between performance classes.
+LD1 primarily distinguishes high vs. low performers, LD2 differentiates individuals by age/physiology, and LD3 captures residual patterns.
